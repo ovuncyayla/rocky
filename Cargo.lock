@@ -794,7 +794,7 @@ checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 [[package]]
 name = "jg"
 version = "0.1.0"
-source = "git+https://github.com/ovuncyayla/jg.git?branch=dev#87489893324d6c6d4f661153bfa19348c3b6287c"
+source = "git+https://github.com/ovuncyayla/jg.git?branch=dev#020457e2a0ad26e8f2bab9127a1771f134dee7d8"
 dependencies = [
  "chrono",
  "clap",

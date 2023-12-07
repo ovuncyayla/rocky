@@ -1,7 +1,7 @@
 mod route;
 
 use std::{path::PathBuf, str::FromStr};
-use actix_web::{get, web, App, HttpServer, HttpResponse, guard};
+use actix_web::{http, get, web, App, HttpServer, HttpResponse, guard,};
 
 use std::sync::Mutex;
 
@@ -26,22 +26,31 @@ fn config(cfg: &mut web::ServiceConfig) {
 }
 
 
-fn configZZZZ(cfg: &mut web::ServiceConfig) {
+async fn i(data: web::Data<jg::Config>) -> String {
+    let asd = jg::generate_json(&data).unwrap();
+    serde_json::to_string(&asd).unwrap()
+}
 
+fn configZZZZ(cfg: &mut web::ServiceConfig) {
     let routes = vec![
-        ( "giveittome", confy("config.yaml"))
+        ( "GET", "giveittome", confy("config.yaml"))
     ];
 
-    let app_scope = web::scope("/");
-
     for route in routes {
-        let (path, _conf) = route;
+        let (method, path, conf) = route;
+        println!("{}", path);
+        let route: actix_web::Route = match http::Method::from_bytes(method.as_bytes()) {
+            Ok(http::Method::GET) => web::get(),
+            Ok(http::Method::POST) => web::post(),
+            Ok(http::Method::PUT) => web::put(),
+            Ok(http::Method::DELETE) => web::delete(),
+            Err(err) => todo!(),
+            _ => web::route()
+        };
         cfg.service(
             web::resource(path)
-            .route(web::get().to(|| async {
-                let b = serde_json::to_string(&jg::generate_json(&confy("config.yaml")).unwrap()).unwrap();
-                HttpResponse::Ok().body(b)}
-            ))
+            .app_data(web::Data::new(conf))
+            .route(route.to(i))
         );
     }
 }
@@ -59,18 +68,21 @@ async fn main() -> std::io::Result<()> {
     //         }
     //     ]
     // };
-    
+
+    // let counter = web::Data::new(AppStateWithCounter {
+    //     counter: Mutex::new(0),
+    // });
 
 
+    let routes = vec![
+        ( "giveittome", confy("config.yaml"))
+    ];
 
-    let counter = web::Data::new(AppStateWithCounter {
-        counter: Mutex::new(0),
-    });
 
     HttpServer::new(move || {
         // move counter into the closure
         App::new()
-            .app_data(counter.clone()) // <- register the created data
+            // .app_data(confy("config.yaml")) // <- register the created data
             .service(
                 web::scope("/")
                     .guard(guard::Host("www.rust-lang.org"))
@@ -87,6 +99,7 @@ async fn main() -> std::io::Result<()> {
             // .route("/", web::get().to(index))
             .route("/", web::to(HttpResponse::Ok))
     })
+    .workers(1)
     .bind(("127.0.0.1", 8080))?
     .run()
     .await

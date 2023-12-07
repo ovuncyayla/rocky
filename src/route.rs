@@ -6,10 +6,7 @@ pub struct RouteConfig {
 
 #[derive(Debug)]
 pub struct RouteDef {
-    path: String,
-    conf: jg::Config
+    pub path: String,
+    pub conf: jg::Config
 }
 
-impl RouteDef {
-    
-}
