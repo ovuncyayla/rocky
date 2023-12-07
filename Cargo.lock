@@ -1089,7 +1089,9 @@ name = "rocky"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "env_logger",
  "jg",
+ "log",
  "serde",
  "serde_json",
  "serde_yaml",

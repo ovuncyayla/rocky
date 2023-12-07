@@ -1,5 +1,5 @@
 mod route;
-
+use log::{info, debug, warn};
 use std::{path::PathBuf, str::FromStr};
 use actix_web::{http, get, web, App, HttpServer, HttpResponse, guard,};
 
@@ -44,7 +44,10 @@ fn configZZZZ(cfg: &mut web::ServiceConfig) {
             Ok(http::Method::POST) => web::post(),
             Ok(http::Method::PUT) => web::put(),
             Ok(http::Method::DELETE) => web::delete(),
-            Err(err) => todo!(),
+            Err(err) => {
+                warn!("Invalid request method: {}, {}", method, err);
+                continue;
+            },
             _ => web::route()
         };
         cfg.service(
@@ -57,6 +60,13 @@ fn configZZZZ(cfg: &mut web::ServiceConfig) {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+
+    let env = env_logger::Env::default()
+        .filter_or("JG_LOG", "info")
+        .write_style_or("JG_LOG_STYLE", "always");
+
+    env_logger::init_from_env(env);
+
     // Note: web::Data created _outside_ HttpServer::new closure
 
     // TODO: Later dudes!
