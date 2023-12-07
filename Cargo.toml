@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4.4.0"
+clap = { version = "4.4.11", features = ["derive"] }
 env_logger = "0.10.1"
 jg = { git = "https://github.com/ovuncyayla/jg.git", branch = "dev" }
 log = "0.4.20"

@@ -1,43 +1,21 @@
-mod route;
+mod app;
+
+use app::{ RouterConfig, RouteConfig };
+use clap::Parser;
 use log::{info, debug, warn};
+use serde_yaml;
 use std::{path::PathBuf, str::FromStr};
 use actix_web::{http, get, web, App, HttpServer, HttpResponse, guard,};
 
-use std::sync::Mutex;
-
-struct AppStateWithCounter {
-    counter: Mutex<i32>, // <- Mutex is necessary to mutate safely across threads
-}
-
-async fn index(data: web::Data<AppStateWithCounter>) -> String {
-    let mut counter = data.counter.lock().unwrap(); // <- get counter's MutexGuard
-    *counter += 1; // <- access counter inside MutexGuard
-
-    format!("Request number: {counter}") // <- response with count
-}
-
-// this function could be located in a different module
-fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::resource("/app")
-            .route(web::get().to(|| async { HttpResponse::Ok().body("app") }))
-            .route(web::head().to(HttpResponse::MethodNotAllowed)),
-    );
-}
-
-
-async fn i(data: web::Data<jg::Config>) -> String {
+async fn handler(data: web::Data<jg::Config>) -> String {
     let asd = jg::generate_json(&data).unwrap();
     serde_json::to_string(&asd).unwrap()
 }
 
-fn configZZZZ(cfg: &mut web::ServiceConfig) {
-    let routes = vec![
-        ( "GET", "giveittome", confy("config.yaml"))
-    ];
+fn config(cfg: &mut web::ServiceConfig, routerconfig: RouterConfig) {
 
-    for route in routes {
-        let (method, path, conf) = route;
+    for route in routerconfig.routes {
+        let RouteConfig { method, path, config } = route;
         println!("{}", path);
         let route: actix_web::Route = match http::Method::from_bytes(method.as_bytes()) {
             Ok(http::Method::GET) => web::get(),
@@ -52,42 +30,34 @@ fn configZZZZ(cfg: &mut web::ServiceConfig) {
         };
         cfg.service(
             web::resource(path)
-            .app_data(web::Data::new(conf))
-            .route(route.to(i))
+            .app_data(web::Data::new(confy(&config)))
+            .route(route.to(handler))
         );
     }
+}
+
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct AppArgs {
+    /// Sets a custom config file
+    #[arg(short, long, value_name = "Config File", value_parser = clap::value_parser!(PathBuf),  default_value = "config.yaml")]
+    config: Option<PathBuf>,
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
 
     let env = env_logger::Env::default()
-        .filter_or("JG_LOG", "info")
-        .write_style_or("JG_LOG_STYLE", "always");
+        .filter_or("ROCKY_LOG", "info")
+        .write_style_or("ROCKY_LOG_STYLE", "always");
 
     env_logger::init_from_env(env);
 
+
+    let args = AppArgs::parse();
+    let routerconfig: RouterConfig = RouterConfig::from(args.config.unwrap());
+
     // Note: web::Data created _outside_ HttpServer::new closure
-
-    // TODO: Later dudes!
-    // let routes = route::RouteConfig {
-    //     routes: vec![
-    //         route::RouteDef { 
-    //             path: "/giveittome",
-    //             config_file: "config.yaml"
-    //         }
-    //     ]
-    // };
-
-    // let counter = web::Data::new(AppStateWithCounter {
-    //     counter: Mutex::new(0),
-    // });
-
-
-    let routes = vec![
-        ( "giveittome", confy("config.yaml"))
-    ];
-
 
     HttpServer::new(move || {
         // move counter into the closure
@@ -103,10 +73,12 @@ async fn main() -> std::io::Result<()> {
                     .guard(guard::Host("users.rust-lang.org"))
                     .route("", web::to(|| async { HttpResponse::Ok().body("user") })),
             )
-            .configure(config)
-            .configure(configZZZZ)
-            .service(web::scope("/somepath").configure(config))
+            .configure(|cfg: &mut web::ServiceConfig| {
+                config(cfg, routerconfig.clone());
+            })
+            // .service(web::scope("/somepath").configure(config))
             // .route("/", web::get().to(index))
+            .service(web::scope("/somepath"))
             .route("/", web::to(HttpResponse::Ok))
     })
     .workers(1)
@@ -119,11 +91,3 @@ fn confy(path: &str) -> jg::Config {
     jg::Config::from(PathBuf::from_str(path).unwrap())
 }
 
-#[allow(unused)]
-fn asd() {
-
-    let cfg = jg::Config::from(PathBuf::from_str("config.yaml").unwrap());
-    let asd = jg::generate_json(&cfg);
-    println!("{:?}", asd);
-
-}
