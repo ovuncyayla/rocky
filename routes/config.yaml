@@ -2,4 +2,6 @@ routes:
   - path: "giveittome"
     method: "GET"
     config: "routes/giveittome.yaml"
-
+  - path: "giveittome2"
+    method: "POST"
+    config: "routes/giveittome.yaml"
